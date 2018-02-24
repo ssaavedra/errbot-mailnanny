@@ -41,10 +41,13 @@ class MailInfo(object):
         self.to = rfcmailtoaddresses(content['To'])
         self.cc = rfcmailtoaddresses(content.get('Cc'))
         self.subject = content['Subject']
-        self.date = dateutil.parser.parse(content['Date'])
+        self.date = content['Date']
         self.log = log
         self.replies = []
         self.parent = None
+
+    def get_date(self):
+        return dateutil.parser.parse(self.date)
 
     def parse_content(self, content):
         headers = []
@@ -81,7 +84,7 @@ class MailInfo(object):
         if self.is_reply(other, monitored_emails):
             other.parent = self # TODO Oversimplification! Should go via the References/In-Reply-To headers
             self.replies.append(other)
-            self.replies.sort(key=lambda m: m.date)
+            self.replies.sort(key=lambda m: m.get_date())
         else:
             raise Exception("Email {} is not a reply for {}".format(other, self))
 
@@ -102,7 +105,7 @@ class MailInfo(object):
             return False
 
     def should_remember(self, min_delta=timedelta(days=1)):
-        if self.pending_answer() and self.last_message().date + min_delta < datetime.now(tz=timezone.utc):
+        if self.pending_answer() and self.last_message().get_date() + min_delta < datetime.now(tz=timezone.utc):
             return True
         else:
             return False
