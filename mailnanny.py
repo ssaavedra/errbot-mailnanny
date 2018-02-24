@@ -3,21 +3,48 @@ from errbot.plugin_manager import PluginActivationException
 
 from datetime import datetime, timedelta, timezone
 
-dateutil = None
+try:
+    import dateutil
+    import dateutil.parser
+except ImportError:
+    log.exception("Could not start the mailnanny plugin")
+    log.fatal(""" To use the mailnanny plugin you need to install python-dateutil:
+    pip install python-dateutil
+    """)
+    sys.exit(-1)
+
+def rfcmailtoaddresses(text):
+    if not text:
+        return text
+    text = text.split(',')
+    def remove_mail_from_name(address):
+        if '<' in address:
+            l = address.find('<')
+            r = address.find('>')
+            return address[l + 1:r]
+        else:
+            return address
+    return [
+        remove_mail_from_name(address)
+        for address in text
+    ]
+
+
 
 class MailInfo(object):
     """Test class"""
     def __init__(self, content, log):
         content = self.parse_content(content)
         self.headers = content
-        self.frm = content['From']
-        self.reply_to = content.get('Reply-To', content['From'])
-        self.to = content['To']
-        self.cc = content.get('Cc')
+        self.frm = rfcmailtoaddresses(content['From'])[0]
+        self.reply_to = rfcmailtoaddresses(content.get('Reply-To', content['From']))[0]
+        self.to = rfcmailtoaddresses(content['To'])
+        self.cc = rfcmailtoaddresses(content.get('Cc'))
         self.subject = content['Subject']
         self.date = dateutil.parser.parse(content['Date'])
         self.log = log
         self.replies = []
+        self.parent = None
 
     def parse_content(self, content):
         headers = []
@@ -33,7 +60,7 @@ class MailInfo(object):
         headers_dict = {}
         for header in headers:
             try:
-                name, value = header.split(": ")
+                name, value = header.split(": ", 1)
             except:
                 raise Exception("What is {} in {}".format(header, headers))
             headers_dict[name] = value
@@ -42,18 +69,24 @@ class MailInfo(object):
 
     def is_reply(self, other, monitored_emails):
         if other.frm in monitored_emails \
-           and (other.to == self.frm or other.to == self.reply_to) \
+           and (self.frm in other.to or self.reply_to in other.to) \
            and self.subject in other.subject:
             return True
         else:
             return False
 
-    def add_reply(self, other):
+    def add_reply(self, other, monitored_emails):
         if not isinstance(other, MailInfo):
             other = MailInfo(other, self.log)
-        if self.is_reply(other):
+        if self.is_reply(other, monitored_emails):
+            other.parent = self # TODO Oversimplification! Should go via the References/In-Reply-To headers
             self.replies.append(other)
             self.replies.sort(key=lambda m: m.date)
+        else:
+            raise Exception("Email {} is not a reply for {}".format(other, self))
+
+    def __str__(self):
+        return "<MailInfo from={frm} to={to} subj={subj}>".format(frm=self.frm, to=self.to, subj=self.subject)
 
     def pending_answer(self):
         if not self.replies:
@@ -69,13 +102,13 @@ class MailInfo(object):
             return False
 
     def should_remember(self, min_delta=timedelta(days=1)):
-        if self.pending_answer() and self.latest_message().date + min_delta < datetime.now(tz=timezone.utc):
+        if self.pending_answer() and self.last_message().date + min_delta < datetime.now(tz=timezone.utc):
             return True
         else:
             return False
 
-    def latest_message(self):
-        """Returns the latest message in this conversation."""
+    def last_message(self):
+        """Returns the last message in this conversation."""
         if self.replies:
             return self.replies[-1]
         else:
@@ -192,58 +225,109 @@ class Mailnanny(BotPlugin):
         self.check_authorized(request)
         return "{0}\n\n{1}".format(b"".join(self['LATEST_REQUEST']).decode('utf-8'), MailInfo(self['LATEST_REQUEST'], self.log))
 
-    def check_mail_list(self, mails):
+    def on_stale_mail(self):
+        def cb(mail):
+            for receiver in self.config['notify_stale']:
+                self.send(
+                    self.build_identifier(receiver),
+                    "Unanswered email warning.\n" +
+                    "Subject: `{subj}`\n" +
+                    "Originally from: `{frm}`" +
+                    "Has {replies} replies, last was at {last}".format(
+                        subj=mail.subject,
+                        frm=mail.frm,
+                        replies=len(mail.replies),
+                        last=mail.last_message().date
+                    )
+                )
+        return cb
+
+    def on_non_stale_mail(self):
+        def cb(mail):
+            for receiver in self.config['notify_stale']:
+                self.send(
+                    self.build_identifier(receiver),
+                    "Found not stale email.\n" +
+                    "Pending answer: {n}\n" +
+                    "Subject: `{subj}`\n" +
+                    "Originally from: `{frm}`" +
+                    "Has {replies} replies, last was at {last}".format(
+                        n=mail.pending_answer(),
+                        subj=mail.subject,
+                        frm=mail.frm,
+                        replies=len(mail.replies),
+                        last=mail.last_message().date
+                    )
+                )
+        return cb
+
+    @staticmethod
+    def check_mail_list(mails, stale_callback=None, non_stale_debug_callback=None):
         """This function forces a check on the mail list."""
         for mail in mails:
             if mail.should_remember():
-                for receiver in self.config['notify_stale']:
-                    self.send(
-                        self.build_identifier(receiver),
-                        "Unanswered email warning.\n" +
-                        "Subject: `{subj}`\n" +
-                        "Originally from: `{frm}`" +
-                        "Has {replies} replies, last was at {last}".format(
-                            subj=mail.subj,
-                            frm=mail.frm,
-                            replies=len(mail.replies),
-                            last=mail.last_message().date
-                        )
-                    )
-            elif 'debug' in self.config and self.config['debug']:
-                for receiver in self.config['notify_stale']:
-                    self.send(
-                        self.build_identifier(receiver),
-                        "Found not stale email.\n" +
-                        "Pending answer: {n}\n" +
-                        "Subject: `{subj}`\n" +
-                        "Originally from: `{frm}`" +
-                        "Has {replies} replies, last was at {last}".format(
-                            n=mail.pending_answer().
-                            subj=mail.subj,
-                            frm=mail.frm,
-                            replies=len(mail.replies),
-                            last=mail.last_message().date
-                        )
-                    )
-
+                if callable(stale_callback):
+                    stale_callback(mail)
+            else:
+                if callable(non_stale_debug_callback):
+                    non_stale_debug_callback(mail)
 
         return mails
+
+    def receive_mail(self, lines, address):
+        """The non-hook version for easier testing.
+
+        Assumes you're authorized. Don't ever call this function from
+        non-validated call-sites or you will allow fake mails to be
+        introducecd in the system.
+        """
+        self['LATEST_REQUEST'] = lines
+        if lines:
+            new = MailInfo(lines, self.log)
+            mails = self['mails']
+            is_reply = False
+            for mail in mails:
+                if mail.is_reply(new):
+                    mail.add_reply(new, self.config['incoming_addresses'])
+                    is_reply = True
+                    break
+
+            if not is_reply:
+                self['mails'] = mails + [new]
+            else:
+                # The shelve must be updated to refresh the object changes
+                self['mails'] = mails
+            self.alert_new_mail(new)
+
+    def alert_new_mail(self, mail):
+        for receiver in self.config['notify_stale']:
+            self.send(
+                self.build_identifier(receiver),
+                "You got mail.\n" +
+                "Is it a reply from a previous one? {n}\n" +
+                "Subject: `{subj}`\n" +
+                "Originally from: `{frm}`" +
+                "Has {replies} replies, last was at {last}".format(
+                    n=mail.parent is not None,
+                    subj=mail.subject,
+                    frm=mail.frm,
+                    replies=len(mail.replies),
+                    last=mail.last_message().date
+                )
+            )
+
           
     @webhook("/receive-mail-to/<address>", raw=True)
-    def example_webhook(self, request, address):
+    def receive_mail_hook(self, request, address):
         """A webhook which simply returns 'Example'"""
         from bottle import response
         self.check_authorized(request)
 
         content = request.body.readlines()
-        self['LATEST_REQUEST'] = content
 
-        if content:
-            content = MailInfo(content, self.log)
-            self['mails'] = self['mails'] + [content]
-            self['mails'] = self.check_mail_list(self['mails'])
+        self.receive_mail(content, address)
 
-        response.set_header('X-Powered-By', 'GPULMailReminderBot 0.0.1dev1')
+        response.set_header('X-Powered-By', 'GPULMailNannyBot 0.0.1dev1')
         response.set_header('Content-Type', 'application/json')
         return {"gotcha": address}
 
