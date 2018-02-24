@@ -214,7 +214,9 @@ class Mailnanny(BotPlugin):
         if auth.lower().startswith('bearer '):
             auth = auth[len("bearer "):]
 
-        if auth not in map(str, self['TOKENS']):
+        if 'admin_token' in config and auth == self.config['admin_token']:
+            self.log.warn("Somebody has used the DEBUG ADMIN TOKEN to log through the webhook {}".format(request.url))
+        elif auth not in map(str, self['TOKENS']):
             self.log.info("We dont have {0} in tokens {1}".format(auth, self['TOKENS']))
             abort(403, "Forbidden")
 
