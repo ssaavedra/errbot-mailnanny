@@ -1,11 +1,13 @@
 from errbot import BotPlugin, botcmd, arg_botcmd, webhook, ValidationException
 from errbot.plugin_manager import PluginActivationException
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+dateutil = None
 
 class MailInfo(object):
     """Test class"""
-    def __init__(self, content, monitored_emails, log):
+    def __init__(self, content, log):
         content = self.parse_content(content)
         self.headers = content
         self.frm = content['From']
@@ -13,9 +15,9 @@ class MailInfo(object):
         self.to = content['To']
         self.cc = content.get('Cc')
         self.subject = content['Subject']
-        self.dateknown = datetime.now()
-        self.monitored_emails = monitored_emails
+        self.date = dateutil.parser.parse(content['Date'])
         self.log = log
+        self.replies = []
 
     def parse_content(self, content):
         headers = []
@@ -38,17 +40,14 @@ class MailInfo(object):
 
         return headers_dict
 
-    def is_op(self):
-        """Check whether this mail is an OP"""
-        if self.to == "monitored_emails" and self.subject[:3].upper() == ("RE:"):
+    def is_reply(self, other, monitored_emails):
+        if other.frm in monitored_emails \
+           and (other.to == self.frm or other.to == self.reply_to) \
+           and self.subject in other.subject:
             return True
         else:
             return False
 
-    def is_reply(other):
-        if other.frm in self.monitored_emails \
-            and (other.to == self.frm or other.to == self.reply_to) \
-            and self.subject in other.subject:
             return True
         else:
             return False
@@ -66,11 +65,22 @@ class Mailnanny(BotPlugin):
 
         You should delete it if you're not using it to override any default behaviour
         """
+        global dateutil
         super(Mailnanny, self).activate()
         if 'TOKENS' not in self:
             self['TOKENS'] = list()
         if 'mails' not in self:
             self['mails'] = list()
+
+        # Migration #1
+        if len(self['mails']) > 0 and not isinstance(self['mails'][0], MailInfo):
+            self['mails'] = [ MailInfo(content, self.config['incoming_addresses'], self.log) for content in self['mails'] ]
+
+        try:
+            import dateutil
+            import dateutil.parser
+        except ImportError:
+            raise ValidationException("Cannot find python-dateutil in your modules. MailNanny needs dateutil.parser to parse the dates in the amail headers")
 
     def deactivate(self):
         """
@@ -87,7 +97,8 @@ class Mailnanny(BotPlugin):
         You should delete it if your plugin doesn't use any configuration like this
         """
         return {'incoming_addresses': ["info@gpul.org", "secretario@gpul.org", "secretaria@gpul.org"],
-                'admin_token': None
+                'admin_token': None,
+                'notify_stale': ['MYSELF']
                }
 
     def check_configuration(self, configuration):
@@ -151,14 +162,15 @@ class Mailnanny(BotPlugin):
         from bottle import response
         response.set_header('Content-Type', 'text/plain')
         self.check_authorized(request)
-        return "{0}\n\n{1}".format(b"".join(self['LATEST_REQUEST']).decode('utf-8'), MailInfo(self['LATEST_REQUEST'], self.config['incoming_addresses'], self.log))
+        return "{0}\n\n{1}".format(b"".join(self['LATEST_REQUEST']).decode('utf-8'), MailInfo(self['LATEST_REQUEST'], self.log))
 
-    def check_mail_list(self):
+    def check_mail_list(self, mails):
         """This function forces a check on the mail list."""
         mails = self['mails']
         mails = [ MailInfo(content, self.config['incoming_addresses'], self.log) for content in mails]
 
         return None
+        return mails
           
     @webhook("/receive-mail-to/<address>", raw=True)
     def example_webhook(self, request, address):
@@ -170,8 +182,9 @@ class Mailnanny(BotPlugin):
         self['LATEST_REQUEST'] = content
 
         if content:
+            content = MailInfo(content, self.log)
             self['mails'] = self['mails'] + [content]
-            self.check_mail_list()
+            self['mails'] = self.check_mail_list(self['mails'])
 
         response.set_header('X-Powered-By', 'GPULMailReminderBot 0.0.1dev1')
         response.set_header('Content-Type', 'application/json')
