@@ -194,8 +194,38 @@ class Mailnanny(BotPlugin):
 
     def check_mail_list(self, mails):
         """This function forces a check on the mail list."""
-        mails = self['mails']
-        mails = [ MailInfo(content, self.config['incoming_addresses'], self.log) for content in mails]
+        for mail in mails:
+            if mail.should_remember():
+                for receiver in self.config['notify_stale']:
+                    self.send(
+                        self.build_identifier(receiver),
+                        "Unanswered email warning.\n" +
+                        "Subject: `{subj}`\n" +
+                        "Originally from: `{frm}`" +
+                        "Has {replies} replies, last was at {last}".format(
+                            subj=mail.subj,
+                            frm=mail.frm,
+                            replies=len(mail.replies),
+                            last=mail.last_message().date
+                        )
+                    )
+            elif 'debug' in self.config and self.config['debug']:
+                for receiver in self.config['notify_stale']:
+                    self.send(
+                        self.build_identifier(receiver),
+                        "Found not stale email.\n" +
+                        "Pending answer: {n}\n" +
+                        "Subject: `{subj}`\n" +
+                        "Originally from: `{frm}`" +
+                        "Has {replies} replies, last was at {last}".format(
+                            n=mail.pending_answer().
+                            subj=mail.subj,
+                            frm=mail.frm,
+                            replies=len(mail.replies),
+                            last=mail.last_message().date
+                        )
+                    )
+
 
         return mails
           
