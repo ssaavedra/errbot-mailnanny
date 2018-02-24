@@ -225,6 +225,19 @@ class Mailnanny(BotPlugin):
         self.check_authorized(request)
         return "{0}\n\n{1}".format(b"".join(self['LATEST_REQUEST']).decode('utf-8'), MailInfo(self['LATEST_REQUEST']))
 
+    @webhook("/debug/all-mails", raw=True)
+    def all_mails(self, request):
+        from bottle import response
+        import json
+        response.set_header('Content-Type', 'application/json')
+        self.check_authorized(request)
+
+        return json.dumps([
+            mail.headers
+            for mail in self['mails']
+        ])
+
+
     def on_stale_mail(self):
         def cb(mail):
             for receiver in self.config['notify_stale']:
