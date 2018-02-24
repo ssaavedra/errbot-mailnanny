@@ -151,7 +151,7 @@ class Mailnanny(BotPlugin):
             self['mails'] = list()
 
         # Put mails in memory
-        self.processed_mails = [ MailInfo(mail) for mail in self['mails'] ]
+        self.process_mails()
 
         try:
             import dateutil
@@ -250,15 +250,20 @@ class Mailnanny(BotPlugin):
         self.check_authorized(request)
 
         # Regenerate processed_mails for this call
-        self.processed_mails = [
-            MailInfo(mail)
-            for mail in self['mails']
-        ]
+        self.process_mails()
 
         return json.dumps([
             mail.as_json()
             for mail in self.processed_mails
         ])
+
+    def process_mails(self):
+        """Uses receive_mail so that all mails end up in their threads, if
+they were sorted by date in the self['mails'] list."""
+        self.processed_mails = []
+        for mail in self['mails']:
+            self.receive_mail(mail, 'unknown@address.local', persist=False)
+
 
 
     def on_stale_mail(self):
@@ -312,7 +317,7 @@ class Mailnanny(BotPlugin):
 
         return mails
 
-    def receive_mail(self, lines, address):
+    def receive_mail(self, lines, address, persist=True):
         """The non-hook version for easier testing.
 
         Assumes you're authorized. Don't ever call this function from
@@ -322,7 +327,8 @@ class Mailnanny(BotPlugin):
         self['LATEST_REQUEST'] = lines
         if lines:
             new = MailInfo(lines)
-            self['mails'] = self['mails'] + [lines]
+            if persist:
+                self['mails'] = self['mails'] + [lines]
             mails = self.processed_mails
             is_reply = False
             for mail in mails:
