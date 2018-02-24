@@ -339,8 +339,8 @@ they were sorted by date in the self['mails'] list."""
 
             if not is_reply:
                 mails.append(new)
-
-            self.alert_new_mail(new)
+            if persist:
+                self.alert_new_mail(new)
 
     def alert_new_mail(self, mail):
         for receiver in self.config['notify_stale']:
