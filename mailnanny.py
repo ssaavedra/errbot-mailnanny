@@ -137,7 +137,7 @@ class Mailnanny(BotPlugin):
             import dateutil
             import dateutil.parser
         except ImportError:
-            raise ValidationException("Cannot find python-dateutil in your modules. MailNanny needs dateutil.parser to parse the dates in the amail headers")
+            raise ValidationException("Cannot find python-dateutil in your modules. MailNanny needs dateutil.parser to parse the dates in the email headers")
 
     def deactivate(self):
         """
