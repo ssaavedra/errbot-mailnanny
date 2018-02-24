@@ -302,17 +302,17 @@ class Mailnanny(BotPlugin):
         for receiver in self.config['notify_stale']:
             self.send(
                 self.build_identifier(receiver),
-                "You got mail.\n" +
-                "Is it a reply from a previous one? {n}\n" +
-                "Subject: `{subj}`\n" +
-                "Originally from: `{frm}`" +
-                "Has {replies} replies, last was at {last}".format(
-                    n=mail.parent is not None,
-                    subj=mail.subject,
-                    frm=mail.frm,
-                    replies=len(mail.replies),
-                    last=mail.last_message().date
-                )
+                ("You got mail.\n" +
+                 "Is it a reply from a previous one? {n}\n" +
+                 "Subject: `{subj}`\n" +
+                 "Originally from: `{frm}`" +
+                 "Has {replies} replies, last was at {last}").format(
+                     n=mail.parent is not None,
+                     subj=mail.subject,
+                     frm=mail.frm,
+                     replies=len(mail.replies),
+                     last=mail.last_message().date
+                 )
             )
 
           
