@@ -57,7 +57,7 @@ class MailInfo(object):
             'cc': self.cc,
             'subject': self.subject,
             'replies': self.replies,
-            'parent': self.parent.headers
+            'parent': self.parent.headers if self.parent else None
         }
 
     def get_date(self):
