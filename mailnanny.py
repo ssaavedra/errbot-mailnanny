@@ -33,7 +33,7 @@ def rfcmailtoaddresses(text):
 
 class MailInfo(object):
     """Test class"""
-    def __init__(self, content, log):
+    def __init__(self, content):
         content = self.parse_content(content)
         self.headers = content
         self.frm = rfcmailtoaddresses(content['From'])[0]
@@ -42,7 +42,6 @@ class MailInfo(object):
         self.cc = rfcmailtoaddresses(content.get('Cc'))
         self.subject = content['Subject']
         self.date = content['Date']
-        self.log = log
         self.replies = []
         self.parent = None
 
@@ -80,7 +79,7 @@ class MailInfo(object):
 
     def add_reply(self, other, monitored_emails):
         if not isinstance(other, MailInfo):
-            other = MailInfo(other, self.log)
+            other = MailInfo(other)
         if self.is_reply(other, monitored_emails):
             other.parent = self # TODO Oversimplification! Should go via the References/In-Reply-To headers
             self.replies.append(other)
@@ -224,7 +223,7 @@ class Mailnanny(BotPlugin):
         from bottle import response
         response.set_header('Content-Type', 'text/plain')
         self.check_authorized(request)
-        return "{0}\n\n{1}".format(b"".join(self['LATEST_REQUEST']).decode('utf-8'), MailInfo(self['LATEST_REQUEST'], self.log))
+        return "{0}\n\n{1}".format(b"".join(self['LATEST_REQUEST']).decode('utf-8'), MailInfo(self['LATEST_REQUEST']))
 
     def on_stale_mail(self):
         def cb(mail):
@@ -284,7 +283,7 @@ class Mailnanny(BotPlugin):
         """
         self['LATEST_REQUEST'] = lines
         if lines:
-            new = MailInfo(lines, self.log)
+            new = MailInfo(lines)
             mails = self['mails']
             is_reply = False
             for mail in mails:
@@ -294,10 +293,9 @@ class Mailnanny(BotPlugin):
                     break
 
             if not is_reply:
-                self['mails'] = mails + [new]
-            else:
-                # The shelve must be updated to refresh the object changes
-                self['mails'] = mails
+                mails.append(new)
+            # The shelve must be updated to refresh the object changes
+            self['mails'] = mails
             self.alert_new_mail(new)
 
     def alert_new_mail(self, mail):

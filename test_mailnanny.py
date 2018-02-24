@@ -77,12 +77,11 @@ def test_generate_one_mail_alone_stale():
                 "Problem with stuff",
                 "I have problem. Cheers.",
                 datetime.now(tz=timezone.utc) - timedelta(days=30)
-            ),
-            None
+            )
         ),
     ]
 
-    Mailnanny.check_mail_list(mail_list, stale.append, None)
+    Mailnanny.check_mail_list(mail_list, stale.append)
 
     assert len(stale) == 1
     
@@ -97,7 +96,7 @@ def test_generate_one_mail_with_answer():
         "Problem with stuff",
         "I have problem. Cheers.",
         datetime.now(tz=timezone.utc) - timedelta(days=30)
-    ), None)
+    ))
 
     reply = MailInfo(generate_email(
         "info@gpul.org",
@@ -105,7 +104,7 @@ def test_generate_one_mail_with_answer():
         "RE: Problem with stuff",
         "I have problem. Cheers.",
         datetime.now(tz=timezone.utc) - timedelta(days=29)
-    ), None)
+    ))
 
     mail.add_reply(reply, ["info@gpul.org"])
 
@@ -113,7 +112,7 @@ def test_generate_one_mail_with_answer():
     assert reply.frm != mail.frm
     assert not mail.pending_answer()
 
-    Mailnanny.check_mail_list([mail], stale.append, None)
+    Mailnanny.check_mail_list([mail], stale.append)
 
     assert len(stale) == 0
     
