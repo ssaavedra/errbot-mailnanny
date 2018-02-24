@@ -376,6 +376,19 @@ they were sorted by date in the self['mails'] list."""
         response.set_header('Content-Type', 'application/json')
         return {"gotcha": address}
 
+    @webhook('/mailnanny/mailnanny.py')
+    def get_source(self, request):
+        """A webhook which returns this own file to comply with AGPLv3"""
+        source = __file__
+        if source[-1] == 'c':
+            source = source[:-1]
+        with open(source, 'rb') as f:
+            content = f.read()
+        from bottle import response
+        response.set_header('Content-Type', 'text/plain')
+        response.set_header('X-License', 'AGPLv3')
+        return content
+
     @botcmd(admin_only=True)
     def generate_mail_token(self, message, args):
         """
