@@ -133,10 +133,6 @@ class Mailnanny(BotPlugin):
         if 'mails' not in self:
             self['mails'] = list()
 
-        # Migration #1
-        if len(self['mails']) > 0 and not isinstance(self['mails'][0], MailInfo):
-            self['mails'] = [ MailInfo(content, self.config['incoming_addresses'], self.log) for content in self['mails'] ]
-
         try:
             import dateutil
             import dateutil.parser
