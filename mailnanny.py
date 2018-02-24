@@ -230,10 +230,11 @@ class Mailnanny(BotPlugin):
             for receiver in self.config['notify_stale']:
                 self.send(
                     self.build_identifier(receiver),
-                    "Unanswered email warning.\n" +
-                    "Subject: `{subj}`\n" +
-                    "Originally from: `{frm}`" +
-                    "Has {replies} replies, last was at {last}".format(
+                    ("Unanswered email warning.\n" +
+                     "Subject: `{subj}`\n" +
+                     "Originally from: `{frm}`\n" +
+                     "Has {replies} replies, last was at {last}"
+                    ).format(
                         subj=mail.subject,
                         frm=mail.frm,
                         replies=len(mail.replies),
@@ -247,11 +248,12 @@ class Mailnanny(BotPlugin):
             for receiver in self.config['notify_stale']:
                 self.send(
                     self.build_identifier(receiver),
-                    "Found not stale email.\n" +
-                    "Pending answer: {n}\n" +
-                    "Subject: `{subj}`\n" +
-                    "Originally from: `{frm}`" +
-                    "Has {replies} replies, last was at {last}".format(
+                    ("Found not stale email.\n" +
+                     "Pending answer: {n}\n" +
+                     "Subject: `{subj}`\n" +
+                     "Originally from: `{frm}`\n" +
+                     "Has {replies} replies, last was at {last}"
+                    ).format(
                         n=mail.pending_answer(),
                         subj=mail.subject,
                         frm=mail.frm,
@@ -305,14 +307,15 @@ class Mailnanny(BotPlugin):
                 ("You got mail.\n" +
                  "Is it a reply from a previous one? {n}\n" +
                  "Subject: `{subj}`\n" +
-                 "Originally from: `{frm}`" +
-                 "Has {replies} replies, last was at {last}").format(
-                     n=mail.parent is not None,
-                     subj=mail.subject,
-                     frm=mail.frm,
-                     replies=len(mail.replies),
-                     last=mail.last_message().date
-                 )
+                 "Originally from: `{frm}`\n" +
+                 "Has {replies} replies, last was at {last}"
+                ).format(
+                    n=mail.parent is not None,
+                    subj=mail.subject,
+                    frm=mail.frm,
+                    replies=len(mail.replies),
+                    last=mail.last_message().date
+                )
             )
 
           
