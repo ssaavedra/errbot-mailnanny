@@ -287,7 +287,7 @@ class Mailnanny(BotPlugin):
             mails = self['mails']
             is_reply = False
             for mail in mails:
-                if mail.is_reply(new):
+                if mail.is_reply(new, self.config['incoming_addresses']):
                     mail.add_reply(new, self.config['incoming_addresses'])
                     is_reply = True
                     break
