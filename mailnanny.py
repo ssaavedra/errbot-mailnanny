@@ -56,6 +56,7 @@ class MailInfo(object):
             'to': self.to,
             'cc': self.cc,
             'subject': self.subject,
+            'latest_msg_date': str(self.last_message().get_date()),
             'replies': [reply.as_json() for reply in self.replies],
             'parent': self.parent.headers if self.parent else None
         }
