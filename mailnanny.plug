@@ -1,6 +1,6 @@
 [Core]
-name = MailToReply
-module = mailtoreply
+name = MailNanny
+module = mailnanny
 
 [Documentation]
 description = Know which emails haven't yet been replied to

@@ -55,7 +55,7 @@ class MailInfo(object):
 
 
 
-class Mailtoreply(BotPlugin):
+class Mailnanny(BotPlugin):
     """
     Know which emails haven&#39;t yet been replied to
     """
@@ -66,7 +66,7 @@ class Mailtoreply(BotPlugin):
 
         You should delete it if you're not using it to override any default behaviour
         """
-        super(Mailtoreply, self).activate()
+        super(Mailnanny, self).activate()
         if 'TOKENS' not in self:
             self['TOKENS'] = list()
         if 'mails' not in self:
@@ -78,7 +78,7 @@ class Mailtoreply(BotPlugin):
 
         You should delete it if you're not using it to override any default behaviour
         """
-        super(Mailtoreply, self).deactivate()
+        super(Mailnanny, self).deactivate()
 
     def get_configuration_template(self):
         """
@@ -98,7 +98,7 @@ class Mailtoreply(BotPlugin):
 
         You should delete it if you're not using it to override any default behaviour
         """
-        super(Mailtoreply, self).check_configuration(configuration)
+        super(Mailnanny, self).check_configuration(configuration)
         if 'incoming_addresses' not in configuration or type(configuration['incoming_addresses']) is not list:
             raise ValidationException("You need to configure a valid list as the incoming_addresses value")
 
