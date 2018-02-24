@@ -77,6 +77,7 @@ class MailInfo(object):
             'cc': self.cc,
             'subject': self.subject,
             'latest_msg_date': str(self.last_message().get_date()),
+            'pending_answer': self.pending_answer(),
             'replies': [reply.as_json() for reply in self.replies],
             'parent': self.parent.headers if self.parent else None
         }
