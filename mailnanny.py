@@ -249,6 +249,12 @@ class Mailnanny(BotPlugin):
         response.set_header('Content-Type', 'application/json')
         self.check_authorized(request)
 
+        # Regenerate processed_mails for this call
+        self.processed_mails = [
+            MailInfo(mail)
+            for mail in self['mails']
+        ]
+
         return json.dumps([
             mail.as_json()
             for mail in self.processed_mails
