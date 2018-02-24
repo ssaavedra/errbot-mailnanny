@@ -48,10 +48,38 @@ class MailInfo(object):
         else:
             return False
 
+    def add_reply(self, other):
+        if not isinstance(other, MailInfo):
+            other = MailInfo(other, self.log)
+        if self.is_reply(other):
+            self.replies.append(other)
+            self.replies.sort(key=lambda m: m.date)
+
+    def pending_answer(self):
+        if not self.replies:
+            return True
+        if self.replies[-1].frm == self.frm:
+            # Last message is from OP
+            return True
+        else:
+            # We assume that if the latest message is not from OP,
+            # it's not pending an answer, from the bot POV. Later we
+            # should add mechanisms to avoid messages from being
+            # considered an answer.
+            return False
+
+    def should_remember(self, min_delta=timedelta(days=1)):
+        if self.pending_answer() and self.latest_message().date + min_delta < datetime.now(tz=timezone.utc):
             return True
         else:
             return False
 
+    def latest_message(self):
+        """Returns the latest message in this conversation."""
+        if self.replies:
+            return self.replies[-1]
+        else:
+            return self
 
 
 class Mailnanny(BotPlugin):
