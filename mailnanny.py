@@ -135,6 +135,13 @@ class Mailnanny(BotPlugin):
         if 'mails' not in self:
             self['mails'] = list()
 
+        # Migration
+        if len(self['mails']) > 0 and type(self['mails'][0]) is MailInfo:
+            self['mails'] = list()
+
+        # Put mails in memory
+        self.processed_mails = [ MailInfo(mail) for mail in self['mails'] ]
+
         try:
             import dateutil
             import dateutil.parser
@@ -234,7 +241,7 @@ class Mailnanny(BotPlugin):
 
         return json.dumps([
             mail.headers
-            for mail in self['mails']
+            for mail in self.processed_mails
         ])
 
 
@@ -299,7 +306,8 @@ class Mailnanny(BotPlugin):
         self['LATEST_REQUEST'] = lines
         if lines:
             new = MailInfo(lines)
-            mails = self['mails']
+            self['mails'] = self['mails'] + [lines]
+            mails = self.processed_mails
             is_reply = False
             for mail in mails:
                 if mail.is_reply(new, self.config['incoming_addresses']):
@@ -309,8 +317,7 @@ class Mailnanny(BotPlugin):
 
             if not is_reply:
                 mails.append(new)
-            # The shelve must be updated to refresh the object changes
-            self['mails'] = mails
+
             self.alert_new_mail(new)
 
     def alert_new_mail(self, mail):
@@ -370,6 +377,7 @@ class Mailnanny(BotPlugin):
     def mail_forget_all(self, message, args):
         """Forgets all emails so far. Please keep a backup before"""
         self['mails'] = list()
+        self.processed_mails = list()
         return "Cleared all mails. I don't remember anything now."
 
     # Passing split_args_with=None will cause arguments to be split on any kind
