@@ -135,10 +135,6 @@ class Mailnanny(BotPlugin):
         if 'mails' not in self:
             self['mails'] = list()
 
-        # Migration
-        if len(self['mails']) > 0 and type(self['mails'][0]) is MailInfo:
-            self['mails'] = list()
-
         # Put mails in memory
         self.processed_mails = [ MailInfo(mail) for mail in self['mails'] ]
 
