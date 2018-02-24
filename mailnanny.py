@@ -352,6 +352,12 @@ class Mailnanny(BotPlugin):
         """Clear all previous tokens for webhooks"""
         self['TOKENS'] = list()
 
+    @botcmd(admin_only=True)
+    def mail_forget_all(self, message, args):
+        """Forgets all emails so far. Please keep a backup before"""
+        self['mails'] = list()
+        return "Cleared all mails. I don't remember anything now."
+
     # Passing split_args_with=None will cause arguments to be split on any kind
     # of whitespace, just like Python's split() does
     @botcmd(split_args_with=None)
