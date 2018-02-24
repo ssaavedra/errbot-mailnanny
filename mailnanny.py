@@ -2,6 +2,7 @@ from errbot import BotPlugin, botcmd, arg_botcmd, webhook, ValidationException
 from errbot.plugin_manager import PluginActivationException
 
 from datetime import datetime, timedelta, timezone
+import json
 
 try:
     import dateutil
@@ -44,6 +45,20 @@ class MailInfo(object):
         self.date = content['Date']
         self.replies = []
         self.parent = None
+
+    def as_json(self):
+        return {
+            'type': 'email',
+            'headers': self.headers,
+            'date': str(self.get_date()),
+            'from': self.frm,
+            'reply_to': self.reply_to,
+            'to': self.to,
+            'cc': self.cc,
+            'subject': self.subject,
+            'replies': self.replies,
+            'parent': self.parent.headers
+        }
 
     def get_date(self):
         return dateutil.parser.parse(self.date)
@@ -231,12 +246,11 @@ class Mailnanny(BotPlugin):
     @webhook("/debug/all-mails", raw=True)
     def all_mails(self, request):
         from bottle import response
-        import json
         response.set_header('Content-Type', 'application/json')
         self.check_authorized(request)
 
         return json.dumps([
-            mail.headers
+            mail.as_json()
             for mail in self.processed_mails
         ])
 
