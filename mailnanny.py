@@ -197,7 +197,6 @@ class Mailnanny(BotPlugin):
         mails = self['mails']
         mails = [ MailInfo(content, self.config['incoming_addresses'], self.log) for content in mails]
 
-        return None
         return mails
           
     @webhook("/receive-mail-to/<address>", raw=True)
