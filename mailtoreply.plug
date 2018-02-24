@@ -1,0 +1,10 @@
+[Core]
+name = MailToReply
+module = mailtoreply
+
+[Documentation]
+description = Know which emails haven't yet been replied to
+
+[Python]
+version = 3
+
